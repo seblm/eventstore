@@ -1,7 +1,10 @@
 package name.lemerdy.sebastian.eventstore;
 
+import org.junit.After;
 import org.junit.Test;
 
+import java.io.File;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 
@@ -9,6 +12,17 @@ import static java.time.Instant.now;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class EventStoreTest {
+
+    @After
+    public void removeDataFile() {
+        File file = new File(".eventstore");
+        if (!file.exists()) {
+            return;
+        }
+        if (!file.delete()) {
+            throw new IllegalStateException("unable to delete data file");
+        }
+    }
 
     @Test
     public void should_store_event() {
@@ -64,6 +78,47 @@ public class EventStoreTest {
         assertThat(events).containsExactly(
                 new Event(now.plusSeconds(1), "name.lemerdy.sebastian.type", "data_1"),
                 new Event(now.plusSeconds(2), "name.lemerdy.sebastian.type", "data_2"));
+    }
+
+    @Test
+    public void should_persist_all_events_to_disk() {
+        Instant now = now();
+        EventStore eventStore = new EventStore(new IncrementingClock(now))
+                .store("name.lemerdy.sebastian.type", "data_0")
+                .store("name.lemerdy.sebastian.type", "data_1")
+                .store("name.lemerdy.sebastian.type", "data_2");
+
+        eventStore.persist();
+
+        assertThat(new EventStore(Clock.systemUTC()).events()).containsExactly(
+                new Event(now.plusSeconds(0), "name.lemerdy.sebastian.type", "data_0"),
+                new Event(now.plusSeconds(1), "name.lemerdy.sebastian.type", "data_1"),
+                new Event(now.plusSeconds(2), "name.lemerdy.sebastian.type", "data_2"));
+    }
+
+    @Test
+    public void should_persist_event_with_carriage_return() {
+        Instant now = now();
+        EventStore eventStore = new EventStore(new IncrementingClock(now))
+                .store("name.lemerdy.sebastian.type", "data_0\nnew line");
+
+        eventStore.persist();
+
+        assertThat(new EventStore(Clock.systemUTC()).events()).containsExactly(
+                new Event(now.plusSeconds(0), "name.lemerdy.sebastian.type", "data_0\nnew line"));
+    }
+
+
+    @Test
+    public void should_modify_persisted_data_in_case_of_double_backslash_and_n() {
+        Instant now = now();
+        EventStore eventStore = new EventStore(new IncrementingClock(now))
+                .store("name.lemerdy.sebastian.type", "data_0\\nnew line");
+
+        eventStore.persist();
+
+        assertThat(new EventStore(Clock.systemUTC()).events()).containsExactly(
+                new Event(now.plusSeconds(0), "name.lemerdy.sebastian.type", "data_0\nnew line"));
     }
 
 }

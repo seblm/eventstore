@@ -1,5 +1,12 @@
 package name.lemerdy.sebastian.eventstore;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,16 +27,12 @@ public class EventStore {
 
     private final Clock clock;
     private final SortedMap<Instant, List<Event>> storedEvents;
+    private final Path eventsPath = Paths.get(".eventstore");
 
     public EventStore(Clock clock) {
         this.clock = clock;
         this.storedEvents = new TreeMap<>();
-    }
-
-    public EventStore store(String type, String data) {
-        Instant now = clock.instant();
-        storedEvents.merge(now, singletonList(new Event(now, type, data)), CONCAT);
-        return this;
+        this.load();
     }
 
     public List<Event> events() {
@@ -42,6 +45,37 @@ public class EventStore {
 
     public List<Event> events(Instant fromThisInstant) {
         return FILTER.andThen(FLATTEN).apply(eventsAsStream(), event -> fromThisInstant.equals(event.date) || fromThisInstant.isBefore(event.date));
+    }
+
+    public EventStore store(String type, String data) {
+        return store(new Event(clock.instant(), type, data));
+    }
+
+    private EventStore store(Event event) {
+        storedEvents.merge(event.date, singletonList(event), CONCAT);
+        return this;
+    }
+
+    private void load() {
+        try {
+            Files.readAllLines(eventsPath).stream()
+                    .map(currentLine -> currentLine.split(",", 3))
+                    .map(elements -> new Event(Instant.parse(elements[0]), elements[1], elements[2].replaceAll("\\\\n", "\n")))
+                    .forEach(this::store);
+        } catch (NoSuchFileException ignored) {
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
+    public void persist() {
+        try (PrintWriter in = new PrintWriter(Files.newBufferedWriter(eventsPath))) {
+            eventsAsStream().forEach(events ->
+                    events.forEach(event ->
+                            in.printf("%s,%s,%s%n", event.date, event.type, event.data.replaceAll("\n", "\\\\n"))));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private Stream<List<Event>> eventsAsStream() {
