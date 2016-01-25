@@ -1,16 +1,16 @@
-package name.lemerdy.sebastian.eventstore;
+package name.lemerdy.sebastian.eventstore.testtools;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.concurrent.atomic.AtomicLong;
 
-class IncrementingClock extends Clock {
+public class IncrementingClock extends Clock {
 
     private final AtomicLong epochSecond;
     private final int nano;
 
-    IncrementingClock(Instant from) {
+    public IncrementingClock(Instant from) {
         this.nano = from.getNano();
         this.epochSecond = new AtomicLong(from.getEpochSecond());
     }

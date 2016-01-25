@@ -7,9 +7,14 @@
 
     <dependencies>
         <dependency>
-            <groupId>net.code-story</groupId>
-            <artifactId>http</artifactId>
-            <version>2.104</version>
+            <groupId>org.simpleframework</groupId>
+            <artifactId>simple-common</artifactId>
+            <version>6.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.simpleframework</groupId>
+            <artifactId>simple-http</artifactId>
+            <version>6.0.1</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -26,6 +31,12 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>3.3.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>1.10.19</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

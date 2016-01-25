@@ -1,9 +1,10 @@
 package name.lemerdy.sebastian.eventstore;
 
-import org.junit.After;
+import name.lemerdy.sebastian.eventstore.testtools.DataFileRemover;
+import name.lemerdy.sebastian.eventstore.testtools.IncrementingClock;
+import org.junit.Rule;
 import org.junit.Test;
 
-import java.io.File;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -13,16 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 public class EventStoreTest {
 
-    @After
-    public void removeDataFile() {
-        File file = new File(".eventstore");
-        if (!file.exists()) {
-            return;
-        }
-        if (!file.delete()) {
-            throw new IllegalStateException("unable to delete data file");
-        }
-    }
+    @Rule
+    public DataFileRemover dataFileRemover = new DataFileRemover();
 
     @Test
     public void should_store_event() {
