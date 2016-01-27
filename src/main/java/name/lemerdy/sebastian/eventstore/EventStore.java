@@ -25,6 +25,9 @@ import static java.util.stream.Collectors.toList;
 
 public class EventStore {
 
+    private static final Serializer serializer = new Serializer();
+    private static final Deserializer deserializer = new Deserializer();
+
     private final Clock clock;
     private final SortedMap<Instant, List<Event>> storedEvents;
     private final Path eventsPath = Paths.get(".eventstore");
@@ -60,7 +63,7 @@ public class EventStore {
         try {
             Files.readAllLines(eventsPath).stream()
                     .map(currentLine -> currentLine.split(",", 3))
-                    .map(elements -> new Event(Instant.parse(elements[0]), elements[1], elements[2].replaceAll("\\\\n", "\n")))
+                    .map(elements -> new Event(Instant.parse(elements[0]), elements[1], deserializer.apply(elements[2])))
                     .forEach(this::store);
         } catch (NoSuchFileException ignored) {
         } catch (IOException e) {
@@ -72,7 +75,7 @@ public class EventStore {
         try (PrintWriter in = new PrintWriter(Files.newBufferedWriter(eventsPath))) {
             eventsAsStream().forEach(events ->
                     events.forEach(event ->
-                            in.printf("%s,%s,%s%n", event.date, event.type, event.data.replaceAll("\n", "\\\\n"))));
+                            in.printf("%s,%s,%s%n", event.date, event.type, serializer.apply(event.data))));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
