@@ -1,3 +1,5 @@
 .idea/
 target/
 eventstore.iml
+.eventstore
+dependency-reduced-pom.xml
