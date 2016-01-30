@@ -1,9 +1,6 @@
 package name.lemerdy.sebastian.eventstore;
 
-import org.simpleframework.http.Method;
-import org.simpleframework.http.Request;
-import org.simpleframework.http.Response;
-import org.simpleframework.http.Status;
+import org.simpleframework.http.*;
 import org.simpleframework.http.core.Container;
 import org.simpleframework.http.core.ContainerSocketProcessor;
 import org.simpleframework.transport.connect.SocketConnection;
@@ -15,11 +12,14 @@ import java.net.InetSocketAddress;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.Optional;
 
 import static java.util.stream.Collectors.joining;
 
 public class EventStoreHttp implements Container {
+
+    static final String BASIC = "Basic ";
 
     private final EventStore eventStore;
     private final Serializer serializer;
@@ -32,6 +32,10 @@ public class EventStoreHttp implements Container {
     @Override
     public void handle(Request req, Response resp) {
         try {
+            if (!checkAuthorization(req)) {
+                unauthorized(resp);
+                return;
+            }
             if (!req.getPath().getPath().startsWith("/events")) {
                 notFound(resp);
                 return;
@@ -53,8 +57,27 @@ public class EventStoreHttp implements Container {
         }
     }
 
+    private boolean checkAuthorization(Request req) {
+        return Optional.ofNullable(req.getValue(Protocol.AUTHORIZATION))
+                .filter(authorization -> authorization.startsWith(BASIC))
+                .map(authorization -> authorization.substring(BASIC.length()))
+                .map(String::getBytes)
+                .map(authorization -> Base64.getMimeDecoder().decode(authorization))
+                .map(String::new)
+                .map(authorization -> authorization.split(":"))
+                .filter(authorization -> authorization.length == 2)
+                .map(Authorizer::new)
+                .map(Authorizer::isAuthorized)
+                .orElse(false);
+    }
+
     private void notFound(Response resp) {
         resp.setStatus(Status.NOT_FOUND);
+    }
+
+    private void unauthorized(Response resp) {
+        resp.setStatus(Status.UNAUTHORIZED);
+        resp.setValue(Protocol.WWW_AUTHENTICATE, "Basic realm=\"eventstore\"");
     }
 
     private void events(Request req, Response resp) {
